@@ -1,0 +1,44 @@
+name: Upload Artifacts
+
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: macos-latest
+          arch: arm64
+          runner: macos-latest
+          java-distribution: temurin
+          expander_leg: macos-latest--arm64
+    name: Build and Upload Artifacts [${{ matrix.expander_leg }}]
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1   # v7.0.1
+      # JDK 8 toolchain for testJava8Compatibility; registered in ~/.m2/toolchains.xml,
+      # which Gradle auto-detects. Other legs let Gradle provision it.
+    - name: Set up JDK 8 toolchain
+      if: ${{ matrix.java8-arch }}
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6   # v6.0.1
+      with:
+        distribution: temurin
+        java-version: 8
+        architecture: ${{ matrix.java8-arch }}
+    - name: Set up JDK
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6   # v6.0.1
+      with:
+        distribution: ${{ matrix.java-distribution }}
+        java-version: 25
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb   # v6.3.0
+    - name: Build Artifacts
+      run: ./gradlew --build-cache --parallel build
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a   # v7.0.1
+      with:
+        name: Artifacts
+        path: build/libs/*.jar
+    timeout-minutes: 150
